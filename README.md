@@ -34,7 +34,7 @@ redeploys the site in a minute or two. To replace a page, overwrite its PDF and 
 | Single / double   | `D`                                      | Toolbar button           |
 | All pages         | `T`                                      | Toolbar button           |
 | Fullscreen        | `F`                                      | Toolbar button           |
-| Show / hide bars  | Move the mouse                           | Tap the middle           |
+| Show / hide bars  | Click the middle of the page             | Tap the middle           |
 
 Reading position is remembered in the browser.
 

@@ -37,7 +37,9 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
 /* ---------- Stage ---------- */
 #stage {
   position: fixed;
-  inset: 0;
+  inset: var(--top-h, 61px) 0 var(--bottom-h, 51px) 0;
+  overflow: hidden;
+  transition: top 0.3s var(--ease), bottom 0.3s var(--ease);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -60,7 +62,7 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
   transition: opacity 0.22s ease, transform 0.26s var(--ease);
 }
 .spread img {
@@ -72,7 +74,6 @@ svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width:
   max-height: 100%;
   -webkit-user-drag: none;
   pointer-events: none;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.6);
 }
 .spread.double img { max-width: 50%; }
 .spread.enter-next { opacity: 0; transform: translateX(28px); }
@@ -127,9 +128,7 @@ code { color: var(--text); }
 
 .ui-hidden .bar.top { transform: translateY(-100%); opacity: 0; }
 .ui-hidden .bar.bottom { transform: translateY(100%); opacity: 0; }
-.ui-hidden .nav-arrow { opacity: 0; pointer-events: none; }
-.ui-hidden #stage { cursor: none; }
-.ui-hidden #stage.zoomed { cursor: grab; }
+.ui-hidden #stage { top: 0; bottom: 0; }
 
 #title {
   flex: 1;
@@ -183,12 +182,14 @@ code { color: var(--text); }
   border-radius: 12px;
   background: var(--panel);
   color: var(--text);
-  transition: opacity 0.3s ease, background 0.15s;
+  opacity: 0;
+  transition: opacity 0.2s ease, background 0.15s;
 }
+.nav-arrow:hover, .nav-arrow:focus-visible { opacity: 1; }
 .nav-arrow.prev { left: 12px; }
 .nav-arrow.next { right: 12px; }
 .nav-arrow:hover { background: rgba(40, 40, 48, 0.95); }
-.nav-arrow:disabled { opacity: 0; pointer-events: none; }
+.nav-arrow:disabled { opacity: 0 !important; pointer-events: none; }
 @media (hover: none), (max-width: 700px) { .nav-arrow { display: none; } }
 
 /* ---------- Scrubber ---------- */

@@ -60,12 +60,12 @@ async function init() {
   const startPage = clamp(Number.isFinite(fromHash) ? fromHash - 1 : saved, 0, pages.length - 1);
   spreadIdx = spreadOf(startPage);
 
+  measureBars();
   buildThumbs();
   bindEvents();
   syncChrome();
   show(spreadIdx, 0);
   if (!Number.isFinite(fromHash) && startPage > 0) toast(`Continuing from page ${startPage + 1}`);
-  scheduleHide(3500);
 }
 
 /* ---------- Spreads ---------- */
@@ -194,7 +194,11 @@ function applyZoom(animate) {
   $("zoom-reset").textContent = Math.round(zoom.s * 100) + "%";
 }
 
+// px/py are viewport (client) coordinates.
 function zoomAt(px, py, scale, animate) {
+  const rect = stage.getBoundingClientRect();
+  px -= rect.left;
+  py -= rect.top;
   scale = clamp(scale, 1, MAX_ZOOM);
   if (scale === 1) {
     zoom.x = zoom.y = 0;
@@ -234,7 +238,6 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
-  if (e.pointerType === "mouse") wake();
   if (!pointers.has(e.pointerId) || !gesture) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
@@ -316,25 +319,16 @@ function onWheel(e) {
 
 /* ---------- Chrome visibility ---------- */
 
-let hideTimer = 0;
-const chromeHidden = () => document.body.classList.contains("ui-hidden");
-
-function scheduleHide(ms = 2600) {
-  clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => {
-    if (!$("thumbs").hidden || document.querySelector(".bar:hover, .nav-arrow:hover, .bar :focus-visible")) return;
-    document.body.classList.add("ui-hidden");
-  }, ms);
-}
-
-function wake() {
-  document.body.classList.remove("ui-hidden");
-  scheduleHide();
-}
-
+// The bars sit above and below the page and never cover it. Tapping the middle
+// of the page hides them (the page grows into the freed space) or brings them back.
 function toggleChrome() {
-  clearTimeout(hideTimer);
   document.body.classList.toggle("ui-hidden");
+}
+
+function measureBars() {
+  const root = document.documentElement.style;
+  root.setProperty("--top-h", document.querySelector(".bar.top").offsetHeight + "px");
+  root.setProperty("--bottom-h", document.querySelector(".bar.bottom").offsetHeight + "px");
 }
 
 /* ---------- Thumbnails ---------- */
@@ -359,7 +353,6 @@ function openThumbs() {
   el.hidden = false;
   el.getBoundingClientRect();
   el.classList.add("open");
-  clearTimeout(hideTimer);
   document.querySelector(".thumb.current")?.scrollIntoView({ block: "center" });
 }
 
@@ -368,7 +361,6 @@ function closeThumbs() {
   if (el.hidden) return;
   el.classList.remove("open");
   setTimeout(() => (el.hidden = true), 300);
-  scheduleHide();
 }
 
 /* ---------- Misc ---------- */
@@ -394,7 +386,6 @@ function bindEvents() {
   stage.addEventListener("pointercancel", onPointerUp);
   stage.addEventListener("wheel", onWheel, { passive: false });
   stage.addEventListener("contextmenu", (e) => e.preventDefault());
-  document.addEventListener("pointermove", (e) => e.pointerType === "mouse" && e.target !== stage && wake());
 
   $("prev").addEventListener("click", () => go(-1));
   $("next").addEventListener("click", () => go(1));
@@ -410,10 +401,12 @@ function bindEvents() {
   scrubber.addEventListener("input", () => {
     const target = scrubber.value - 1;
     if (target !== spreadIdx) show(target, target > spreadIdx ? 1 : -1);
-    wake();
   });
 
-  addEventListener("resize", () => zoom.s > 1 && applyZoom(false));
+  addEventListener("resize", () => {
+    measureBars();
+    if (zoom.s > 1) applyZoom(false);
+  });
 
   addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -425,8 +418,9 @@ function bindEvents() {
     }
     if (thumbsOpen) return;
     const onScrubber = e.target === scrubber;
-    const cx = stage.clientWidth / 2;
-    const cy = stage.clientHeight / 2;
+    const rect = stage.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
     const actions = {
       ArrowRight: () => !onScrubber && go(1),
       ArrowLeft: () => !onScrubber && go(-1),
