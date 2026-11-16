@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0b0b0d">
+  <title>{{TITLE}}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b0b0d'/%3E%3Cpath d='M7 9h8v15H7zM17 9h8v15h-8z' fill='none' stroke='%23f5c451' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="stage" aria-label="Comic pages">
+    <div id="canvas"></div>
+    <div id="spinner" hidden></div>
+    <p id="empty" hidden>No pages yet. Add PDFs to the <code>pages</code> folder and push.</p>
+  </main>
+
+  <button class="nav-arrow prev" id="prev" aria-label="Previous page">
+    <svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <button class="nav-arrow next" id="next" aria-label="Next page">
+    <svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+  </button>
+
+  <header class="bar top">
+    <h1 id="title">{{TITLE}}</h1>
+    <div class="actions">
+      <button id="zoom-reset" class="chip" hidden aria-label="Reset zoom">100%</button>
+      <button id="mode" class="icon" aria-label="Switch between single page and double-page spread" title="Single / double page (D)">
+        <svg class="i-single" viewBox="0 0 24 24"><rect x="7" y="4" width="10" height="16" rx="1.5"/></svg>
+        <svg class="i-double" viewBox="0 0 24 24"><rect x="3" y="4" width="9" height="16" rx="1.5"/><rect x="12" y="4" width="9" height="16" rx="1.5"/></svg>
+      </button>
+      <button id="thumbs-btn" class="icon" aria-label="All pages" title="All pages (T)">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1"/></svg>
+      </button>
+      <button id="fullscreen" class="icon" aria-label="Fullscreen" title="Fullscreen (F)">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <footer class="bar bottom">
+    <input id="scrubber" type="range" min="1" max="1" value="1" step="1" aria-label="Go to page">
+    <output id="counter" for="scrubber"></output>
+  </footer>
+
+  <aside id="thumbs" aria-label="All pages" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <h2>Pages</h2>
+        <button id="thumbs-close" class="icon" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div id="thumb-grid"></div>
+    </div>
+  </aside>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
