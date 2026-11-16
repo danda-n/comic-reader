@@ -34,16 +34,63 @@ const files = (await fs.readdir(PAGES).catch(() => []))
   .filter((f) => !f.startsWith(".") && (f.toLowerCase().endsWith(".pdf") || IMAGE_EXT.has(path.extname(f).toLowerCase())))
   .sort(collator.compare);
 
+/**
+ * Full-bleed pages (cover art) sometimes have their artwork placed a hair smaller
+ * than the page, leaving a thin strip of page background along an edge. If a single
+ * image covers nearly the whole page, return the part of the page it actually covers
+ * so we can zoom in just enough for the art to reach every edge. Otherwise null.
+ */
+function fullBleedArtRect(page) {
+  const [x0, y0, x1, y1] = page.getBounds();
+  const pw = x1 - x0;
+  const ph = y1 - y0;
+  const rects = [];
+  const device = new mupdf.Device({
+    fillImage(_image, ctm) {
+      rects.push(mupdf.Rect.transform([0, 0, 1, 1], ctm));
+    },
+  });
+  page.run(device, mupdf.Matrix.identity);
+  device.close();
+
+  const MAX_GAP = 0.03; // only fix slivers: at most 3% of the page per edge
+  for (const [a, b, c, d] of rects) {
+    const vis = [Math.max(a, x0), Math.max(b, y0), Math.min(c, x1), Math.min(d, y1)];
+    const gaps = [vis[0] - x0, vis[1] - y0, x1 - vis[2], y1 - vis[3]];
+    const sliver = gaps.every((g, k) => g <= MAX_GAP * (k % 2 ? ph : pw));
+    if (sliver && gaps.some((g) => g > 0.05)) return vis;
+  }
+  return null;
+}
+
 /** Rasterise every page of a PDF to a PNG buffer at roughly the target height. */
-function* renderPdf(buffer) {
+async function* renderPdf(buffer) {
   const doc = mupdf.Document.openDocument(buffer, "application/pdf");
   for (let i = 0; i < doc.countPages(); i++) {
     const page = doc.loadPage(i);
-    const [, y0, , y1] = page.getBounds();
+    const [x0, y0, , y1] = page.getBounds();
     // Render a bit above the target so the final downscale is crisp.
     const scale = (config.pageHeight * 1.25) / (y1 - y0);
     const pixmap = page.toPixmap(mupdf.Matrix.scale(scale, scale), mupdf.ColorSpace.DeviceRGB, false, true);
-    yield Buffer.from(pixmap.asPNG());
+    let png = Buffer.from(pixmap.asPNG());
+
+    const art = fullBleedArtRect(page);
+    if (art) {
+      const [w, h] = [pixmap.getWidth(), pixmap.getHeight()];
+      const left = Math.ceil((art[0] - x0) * scale);
+      const top = Math.ceil((art[1] - y0) * scale);
+      const right = Math.floor((art[2] - x0) * scale);
+      const bottom = Math.floor((art[3] - y0) * scale);
+      // Crop to the art, then zoom back to the page's exact size (aspect preserved).
+      png = await sharp(png)
+        .extract({ left, top, width: Math.min(w, right) - left, height: Math.min(h, bottom) - top })
+        .resize({ width: w, height: h, fit: "cover" })
+        .png()
+        .toBuffer();
+      console.log(`  page ${i + 1}: art stopped short of the page edge; zoomed to fill`);
+    }
+
+    yield png;
     pixmap.destroy();
     page.destroy();
   }
@@ -54,7 +101,7 @@ const pages = [];
 for (const file of files) {
   const buffer = await fs.readFile(path.join(PAGES, file));
   const rasters = file.toLowerCase().endsWith(".pdf") ? renderPdf(buffer) : [buffer];
-  for (const raster of rasters) {
+  for await (const raster of rasters) {
     const n = String(pages.length + 1).padStart(3, "0");
     const full = await sharp(raster)
       .resize({ height: config.pageHeight, withoutEnlargement: true })
